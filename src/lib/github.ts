@@ -2,6 +2,23 @@
  * Library for interacting with Github & the blog repo
  */
 
+import { GITHUB_BASE_URL } from "@/constants/app";
+import { BLOG_OWNER, BLOG_REPO, TRIPS_LIST_PATH } from "@/constants/blog";
+
+export type GithubContentsAPIResp = {
+  name: string;
+  path: string;
+  sha: string;
+  size: number;
+  url: string;
+  html_url: string;
+  git_url: string;
+  type: string;
+  encoding: string;
+  content: string;
+  [key: string]: any; // idc about the other keys
+};
+
 export type GitHubFile = {
   path: string;
   content: string;
@@ -37,7 +54,60 @@ async function expectOk(res: Response, label: string): Promise<void> {
   if (res.ok) return;
   const body = await res.text();
   const trimmed = body.length > 300 ? body.slice(0, 300) + "…" : body;
-  throw new Error(`${label}: HTTP ${res.status} — ${trimmed}`);
+  throw new Error(`${label}: HTTP ${res.status} on ${res.url} — ${trimmed}`);
+}
+
+export async function fetchTripsFromRepo(opts: {
+  pat: string;
+}): Promise<Array<GithubContentsAPIResp>> {
+  const pat = opts.pat;
+
+  const directoryContents = await fetchDirectoryContentsFromRepo({
+    pat,
+    path: TRIPS_LIST_PATH,
+  });
+
+  // If the content is a directory: The response will be an array of objects, one object for each item in the directory.
+  // Filter by type `type	"dir"` vs `type	"file"`
+  return directoryContents.reduce<GithubContentsAPIResp[]>(
+    (accumulator, dirContent) => {
+      if (dirContent.type === "dir") accumulator.push(dirContent);
+      return accumulator;
+    },
+    [],
+  );
+}
+
+export async function fetchDirectoryContentsFromRepo(opts: {
+  pat: string;
+  path: string | null;
+}): Promise<Array<GithubContentsAPIResp>> {
+  const { pat, path } = opts;
+  let api = `${GITHUB_BASE_URL}/repos/${BLOG_OWNER}/${BLOG_REPO}/contents`;
+  if (path) {
+    api += `/${opts.path}`;
+  }
+
+  const response = await githubFetch(pat, api);
+  await expectOk(response, `fetch contents ${path}`);
+
+  return (await response.json()) as GithubContentsAPIResp[];
+}
+
+export async function fetchFileContentsFromRepo(opts: {
+  pat: string;
+  path: string | null;
+}): Promise<GithubContentsAPIResp> {
+  const { pat, path } = opts;
+  let api = `${GITHUB_BASE_URL}/repos/${BLOG_OWNER}/${BLOG_REPO}/contents`;
+  if (path) {
+    api += `/${opts.path}`;
+  }
+
+  const response = await githubFetch(pat, api);
+  await expectOk(response, `fetch contents ${path}`);
+
+  return (await response.json()) as GithubContentsAPIResp;
 }
 
 export async function createCommitWithFiles(opts: {
@@ -61,7 +131,7 @@ export async function createCommitWithFiles(opts: {
     onStep,
   } = opts;
   const step = (msg: string) => onStep?.(msg);
-  const api = `https://api.github.com/repos/${owner}/${repo}`;
+  const api = `${GITHUB_BASE_URL}/repos/${owner}/${repo}`;
 
   step(`Fetching base ref heads/${baseBranch}`);
   const refRes = await githubFetch(pat, `${api}/git/ref/heads/${baseBranch}`);

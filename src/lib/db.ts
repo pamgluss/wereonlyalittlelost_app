@@ -1,6 +1,6 @@
-import * as SQLite from 'expo-sqlite';
+import * as SQLite from "expo-sqlite";
 
-const DB_NAME = 'wereonlyalittlelost.db';
+const DB_NAME = "wereonlyalittlelost.db";
 
 export type Trip = {
   id: number;
@@ -44,7 +44,7 @@ export type Place = {
   created_at: number;
 };
 
-type EntryRow = Omit<Entry, 'tags' | 'draft'> & {
+type EntryRow = Omit<Entry, "tags" | "draft"> & {
   tags: string;
   draft: number;
 };
@@ -58,8 +58,10 @@ export function getDb(): Promise<SQLite.SQLiteDatabase> {
 
 async function openAndMigrate(): Promise<SQLite.SQLiteDatabase> {
   const db = await SQLite.openDatabaseAsync(DB_NAME);
-  await db.execAsync('PRAGMA foreign_keys = ON;');
-  const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
+  await db.execAsync("PRAGMA foreign_keys = ON;");
+  const row = await db.getFirstAsync<{ user_version: number }>(
+    "PRAGMA user_version",
+  );
   const currentVersion = row?.user_version ?? 0;
 
   if (currentVersion < 1) {
@@ -114,7 +116,8 @@ function rowToEntry(row: EntryRow): Entry {
   let tags: string[] = [];
   try {
     const parsed = JSON.parse(row.tags);
-    if (Array.isArray(parsed)) tags = parsed.filter((t): t is string => typeof t === 'string');
+    if (Array.isArray(parsed))
+      tags = parsed.filter((t): t is string => typeof t === "string");
   } catch {
     tags = [];
   }
@@ -126,17 +129,25 @@ function rowToEntry(row: EntryRow): Entry {
 
 export async function listTrips(): Promise<Trip[]> {
   const db = await getDb();
-  return db.getAllAsync<Trip>('SELECT * FROM trips ORDER BY display_name');
+  return db.getAllAsync<Trip>("SELECT * FROM trips ORDER BY display_name");
 }
 
 export async function getTripById(id: number): Promise<Trip | null> {
   const db = await getDb();
-  return (await db.getFirstAsync<Trip>('SELECT * FROM trips WHERE id = ?', id)) ?? null;
+  return (
+    (await db.getFirstAsync<Trip>("SELECT * FROM trips WHERE id = ?", id)) ??
+    null
+  );
 }
 
 export async function getTripBySlug(slug: string): Promise<Trip | null> {
   const db = await getDb();
-  return (await db.getFirstAsync<Trip>('SELECT * FROM trips WHERE slug = ?', slug)) ?? null;
+  return (
+    (await db.getFirstAsync<Trip>(
+      "SELECT * FROM trips WHERE slug = ?",
+      slug,
+    )) ?? null
+  );
 }
 
 export async function createTrip(input: {
@@ -146,7 +157,7 @@ export async function createTrip(input: {
   const db = await getDb();
   const now = Date.now();
   const result = await db.runAsync(
-    'INSERT INTO trips (slug, display_name, created_at) VALUES (?, ?, ?)',
+    "INSERT INTO trips (slug, display_name, created_at) VALUES (?, ?, ?)",
     input.slug,
     input.display_name,
     now,
@@ -161,7 +172,7 @@ export async function createTrip(input: {
 
 export async function deleteTrip(id: number): Promise<void> {
   const db = await getDb();
-  await db.runAsync('DELETE FROM trips WHERE id = ?', id);
+  await db.runAsync("DELETE FROM trips WHERE id = ?", id);
 }
 
 // Entry helpers
@@ -169,7 +180,7 @@ export async function deleteTrip(id: number): Promise<void> {
 export async function listEntriesByTripId(tripId: number): Promise<Entry[]> {
   const db = await getDb();
   const rows = await db.getAllAsync<EntryRow>(
-    'SELECT * FROM entries WHERE trip_id = ? ORDER BY date DESC',
+    "SELECT * FROM entries WHERE trip_id = ? ORDER BY date DESC",
     tripId,
   );
   return rows.map(rowToEntry);
@@ -177,7 +188,10 @@ export async function listEntriesByTripId(tripId: number): Promise<Entry[]> {
 
 export async function getEntryById(id: number): Promise<Entry | null> {
   const db = await getDb();
-  const row = await db.getFirstAsync<EntryRow>('SELECT * FROM entries WHERE id = ?', id);
+  const row = await db.getFirstAsync<EntryRow>(
+    "SELECT * FROM entries WHERE id = ?",
+    id,
+  );
   return row ? rowToEntry(row) : null;
 }
 
@@ -208,42 +222,72 @@ export async function createEntry(input: CreateEntryInput): Promise<Entry> {
     input.difficulty ?? null,
     input.rating ?? null,
     input.draft === false ? 0 : 1,
-    input.body_markdown ?? '',
+    input.body_markdown ?? "",
     now,
     now,
   );
   const entry = await getEntryById(result.lastInsertRowId);
-  if (!entry) throw new Error('createEntry: entry disappeared after insert');
+  if (!entry) throw new Error("createEntry: entry disappeared after insert");
   return entry;
 }
 
-export type UpdateEntryInput = Partial<Omit<CreateEntryInput, 'trip_id'>>;
+export type UpdateEntryInput = Partial<Omit<CreateEntryInput, "trip_id">>;
 
-export async function updateEntry(id: number, patch: UpdateEntryInput): Promise<void> {
+export async function updateEntry(
+  id: number,
+  patch: UpdateEntryInput,
+): Promise<void> {
   const db = await getDb();
-  const sets: string[] = ['updated_at = ?'];
+  const sets: string[] = ["updated_at = ?"];
   const params: SQLite.SQLiteBindValue[] = [Date.now()];
-  if (patch.slug !== undefined) { sets.push('slug = ?'); params.push(patch.slug); }
-  if (patch.title !== undefined) { sets.push('title = ?'); params.push(patch.title); }
-  if (patch.date !== undefined) { sets.push('date = ?'); params.push(patch.date); }
-  if (patch.tags !== undefined) { sets.push('tags = ?'); params.push(JSON.stringify(patch.tags)); }
-  if (patch.difficulty !== undefined) { sets.push('difficulty = ?'); params.push(patch.difficulty); }
-  if (patch.rating !== undefined) { sets.push('rating = ?'); params.push(patch.rating); }
-  if (patch.draft !== undefined) { sets.push('draft = ?'); params.push(patch.draft ? 1 : 0); }
-  if (patch.body_markdown !== undefined) { sets.push('body_markdown = ?'); params.push(patch.body_markdown); }
+  if (patch.slug !== undefined) {
+    sets.push("slug = ?");
+    params.push(patch.slug);
+  }
+  if (patch.title !== undefined) {
+    sets.push("title = ?");
+    params.push(patch.title);
+  }
+  if (patch.date !== undefined) {
+    sets.push("date = ?");
+    params.push(patch.date);
+  }
+  if (patch.tags !== undefined) {
+    sets.push("tags = ?");
+    params.push(JSON.stringify(patch.tags));
+  }
+  if (patch.difficulty !== undefined) {
+    sets.push("difficulty = ?");
+    params.push(patch.difficulty);
+  }
+  if (patch.rating !== undefined) {
+    sets.push("rating = ?");
+    params.push(patch.rating);
+  }
+  if (patch.draft !== undefined) {
+    sets.push("draft = ?");
+    params.push(patch.draft ? 1 : 0);
+  }
+  if (patch.body_markdown !== undefined) {
+    sets.push("body_markdown = ?");
+    params.push(patch.body_markdown);
+  }
   params.push(id);
-  await db.runAsync(`UPDATE entries SET ${sets.join(', ')} WHERE id = ?`, ...params);
+  await db.runAsync(
+    `UPDATE entries SET ${sets.join(", ")} WHERE id = ?`,
+    ...params,
+  );
 }
 
 export async function deleteEntry(id: number): Promise<void> {
   const db = await getDb();
-  await db.runAsync('DELETE FROM entries WHERE id = ?', id);
+  await db.runAsync("DELETE FROM entries WHERE id = ?", id);
 }
 
 export async function markEntryPublished(id: number): Promise<void> {
   const db = await getDb();
   await db.runAsync(
-    'UPDATE entries SET published_at = ?, draft = 0, updated_at = ? WHERE id = ?',
+    "UPDATE entries SET published_at = ?, draft = 0, updated_at = ? WHERE id = ?",
     Date.now(),
     Date.now(),
     id,
@@ -255,7 +299,7 @@ export async function markEntryPublished(id: number): Promise<void> {
 export async function listPhotosByEntryId(entryId: number): Promise<Photo[]> {
   const db = await getDb();
   return db.getAllAsync<Photo>(
-    'SELECT * FROM photos WHERE entry_id = ? ORDER BY position, id',
+    "SELECT * FROM photos WHERE entry_id = ? ORDER BY position, id",
     entryId,
   );
 }
@@ -270,7 +314,7 @@ export async function addPhoto(input: {
   const db = await getDb();
   const now = Date.now();
   const result = await db.runAsync(
-    'INSERT INTO photos (entry_id, local_uri, remote_url, caption, position, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+    "INSERT INTO photos (entry_id, local_uri, remote_url, caption, position, created_at) VALUES (?, ?, ?, ?, ?, ?)",
     input.entry_id,
     input.local_uri,
     input.remote_url ?? null,
@@ -301,18 +345,33 @@ export async function updatePhoto(
   const db = await getDb();
   const sets: string[] = [];
   const params: SQLite.SQLiteBindValue[] = [];
-  if (patch.local_uri !== undefined) { sets.push('local_uri = ?'); params.push(patch.local_uri); }
-  if (patch.remote_url !== undefined) { sets.push('remote_url = ?'); params.push(patch.remote_url); }
-  if (patch.caption !== undefined) { sets.push('caption = ?'); params.push(patch.caption); }
-  if (patch.position !== undefined) { sets.push('position = ?'); params.push(patch.position); }
+  if (patch.local_uri !== undefined) {
+    sets.push("local_uri = ?");
+    params.push(patch.local_uri);
+  }
+  if (patch.remote_url !== undefined) {
+    sets.push("remote_url = ?");
+    params.push(patch.remote_url);
+  }
+  if (patch.caption !== undefined) {
+    sets.push("caption = ?");
+    params.push(patch.caption);
+  }
+  if (patch.position !== undefined) {
+    sets.push("position = ?");
+    params.push(patch.position);
+  }
   if (sets.length === 0) return;
   params.push(id);
-  await db.runAsync(`UPDATE photos SET ${sets.join(', ')} WHERE id = ?`, ...params);
+  await db.runAsync(
+    `UPDATE photos SET ${sets.join(", ")} WHERE id = ?`,
+    ...params,
+  );
 }
 
 export async function deletePhoto(id: number): Promise<void> {
   const db = await getDb();
-  await db.runAsync('DELETE FROM photos WHERE id = ?', id);
+  await db.runAsync("DELETE FROM photos WHERE id = ?", id);
 }
 
 // Place helpers
@@ -320,7 +379,7 @@ export async function deletePhoto(id: number): Promise<void> {
 export async function listPlacesByEntryId(entryId: number): Promise<Place[]> {
   const db = await getDb();
   return db.getAllAsync<Place>(
-    'SELECT * FROM places WHERE entry_id = ? ORDER BY position, id',
+    "SELECT * FROM places WHERE entry_id = ? ORDER BY position, id",
     entryId,
   );
 }
@@ -334,7 +393,7 @@ export async function addPlace(input: {
   const db = await getDb();
   const now = Date.now();
   const result = await db.runAsync(
-    'INSERT INTO places (entry_id, name, url, position, created_at) VALUES (?, ?, ?, ?, ?)',
+    "INSERT INTO places (entry_id, name, url, position, created_at) VALUES (?, ?, ?, ?, ?)",
     input.entry_id,
     input.name,
     input.url,
@@ -353,5 +412,5 @@ export async function addPlace(input: {
 
 export async function deletePlace(id: number): Promise<void> {
   const db = await getDb();
-  await db.runAsync('DELETE FROM places WHERE id = ?', id);
+  await db.runAsync("DELETE FROM places WHERE id = ?", id);
 }

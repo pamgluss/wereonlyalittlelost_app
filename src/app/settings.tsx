@@ -1,27 +1,38 @@
-import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useEffect, useState } from "react";
+import { Pressable, ScrollView, TextInput } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-import { useTheme } from '@/hooks/use-theme';
+import { Button } from "@/components/button";
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
+import { TRIPS_LIST_PATH } from "@/constants/blog";
+import { BottomTabInset, Spacing } from "@/constants/theme";
+import { useTheme } from "@/hooks/use-theme";
 import {
+  clearAllCredentials,
   CREDENTIAL_KEYS,
   CREDENTIAL_LABELS,
   CredentialKey,
-  clearAllCredentials,
   getAllCredentials,
+  getCredential,
   setCredential,
-} from '@/lib/credentials';
+} from "@/lib/credentials";
+import { createTrip, getTripBySlug, Trip } from "@/lib/db";
+import {
+  fetchFileContentsFromRepo,
+  fetchTripsFromRepo,
+  GithubContentsAPIResp,
+} from "@/lib/github";
+import { styles } from "@/styles/settings";
+import YAML from "yaml";
 
 type Values = Record<CredentialKey, string>;
 
 const EMPTY_VALUES: Values = {
-  github_pat: '',
-  r2_access_key_id: '',
-  r2_secret_access_key: '',
-  google_places_key: '',
+  github_pat: "",
+  r2_access_key_id: "",
+  r2_secret_access_key: "",
+  google_places_key: "",
 };
 
 export default function SettingsScreen() {
@@ -36,6 +47,7 @@ export default function SettingsScreen() {
   });
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -53,17 +65,70 @@ export default function SettingsScreen() {
 
   async function handleSave() {
     setStatus(null);
-    await Promise.all(
-      CREDENTIAL_KEYS.map((k) => setCredential(k, values[k])),
-    );
-    setStatus('Saved');
+    await Promise.all(CREDENTIAL_KEYS.map((k) => setCredential(k, values[k])));
+    setStatus("Saved");
     setTimeout(() => setStatus(null), 2000);
+  }
+
+  async function handleSyncTrips() {
+    setStatus(null);
+    const pat = await getCredential("github_pat");
+    if (!pat) {
+      setStatus("No GitHub PAT in storage. Set it in the Settings tab first.");
+      setTimeout(() => setStatus(null), 2000);
+      return;
+    }
+
+    setSyncing(true);
+
+    const tripsList = await fetchTripsFromRepo({ pat });
+
+    const slugs: string[] = [];
+    const getIndexHTMLPromises: Promise<GithubContentsAPIResp>[] = [];
+    let titles: string[] = [];
+
+    tripsList.forEach((trip) => {
+      slugs.push(trip.name);
+      getIndexHTMLPromises.push(
+        fetchFileContentsFromRepo({
+          pat,
+          path: `${TRIPS_LIST_PATH}/${trip.name}/_index.html`,
+        }),
+      );
+    });
+    // name and github url
+    // so make a list of promises for fetch
+    const results = await Promise.all(getIndexHTMLPromises);
+    titles = results.map((result) => {
+      const content = atob(result.content);
+      const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+      if (frontmatterMatch === null) return "";
+      const frontmatter = YAML.parse(frontmatterMatch[1]);
+      return frontmatter.title;
+    });
+
+    // Now sync
+    const createTripPromises: Promise<Trip>[] = [];
+    slugs.forEach(async (slug, index) => {
+      const existingTrip = await getTripBySlug(slug);
+      if (existingTrip === null) {
+        createTripPromises.push(
+          createTrip({
+            slug,
+            display_name: titles[index],
+          }),
+        );
+      }
+    });
+
+    await Promise.all(createTripPromises);
+    setSyncing(false);
   }
 
   async function handleClearAll() {
     await clearAllCredentials();
     setValues(EMPTY_VALUES);
-    setStatus('Cleared');
+    setStatus("Cleared");
     setTimeout(() => setStatus(null), 2000);
   }
 
@@ -74,15 +139,35 @@ export default function SettingsScreen() {
       style={{ backgroundColor: theme.background }}
       contentContainerStyle={[
         styles.contentContainer,
-        { paddingTop: insets.top + Spacing.four, paddingBottom: contentPaddingBottom },
+        {
+          paddingTop: insets.top + Spacing.four,
+          paddingBottom: contentPaddingBottom,
+        },
       ]}
-      keyboardShouldPersistTaps="handled">
+      keyboardShouldPersistTaps="handled"
+    >
       <ThemedView style={styles.container}>
+        <ThemedText type="subtitle" style={styles.title}>
+          Admin
+        </ThemedText>
+        <ThemedView style={styles.buttonRow}>
+          <Button
+            label={syncing ? "Sync In Progress.." : "Sync Trips"}
+            onPress={handleSyncTrips}
+            disabled={loading}
+            style={styles.rowButton}
+          />
+        </ThemedView>
         <ThemedText type="subtitle" style={styles.title}>
           Credentials
         </ThemedText>
-        <ThemedText type="small" themeColor="textSecondary" style={styles.helpText}>
-          Stored locally in secure storage (Android Keystore). Nothing is bundled with the app.
+        <ThemedText
+          type="small"
+          themeColor="textSecondary"
+          style={styles.helpText}
+        >
+          Stored locally in secure storage (Android Keystore). Nothing is
+          bundled with the app.
         </ThemedText>
 
         {CREDENTIAL_KEYS.map((key) => (
@@ -92,9 +177,10 @@ export default function SettingsScreen() {
               {values[key].length > 0 && (
                 <Pressable
                   onPress={() => setHidden((h) => ({ ...h, [key]: !h[key] }))}
-                  hitSlop={8}>
+                  hitSlop={8}
+                >
                   <ThemedText type="small" themeColor="textSecondary">
-                    {hidden[key] ? 'Show' : 'Hide'}
+                    {hidden[key] ? "Show" : "Hide"}
                   </ThemedText>
                 </Pressable>
               )}
@@ -107,7 +193,7 @@ export default function SettingsScreen() {
               autoCorrect={false}
               spellCheck={false}
               secureTextEntry={hidden[key]}
-              placeholder={loading ? 'Loading…' : 'paste value'}
+              placeholder={loading ? "Loading…" : "paste value"}
               placeholderTextColor={theme.textSecondary}
               style={[
                 styles.input,
@@ -122,34 +208,27 @@ export default function SettingsScreen() {
         ))}
 
         <ThemedView style={styles.buttonRow}>
-          <Pressable
+          <Button
+            label="Save"
             onPress={handleSave}
             disabled={loading}
-            style={({ pressed }) => [
-              styles.button,
-              styles.saveButton,
-              pressed && styles.pressed,
-            ]}>
-            <ThemedText type="smallBold" style={styles.saveButtonLabel}>
-              Save
-            </ThemedText>
-          </Pressable>
-
-          <Pressable
+            style={styles.rowButton}
+          />
+          <Button
+            label="Clear all"
+            variant="secondary"
             onPress={handleClearAll}
             disabled={loading}
-            style={({ pressed }) => [
-              styles.button,
-              styles.clearButton,
-              { borderColor: theme.backgroundElement },
-              pressed && styles.pressed,
-            ]}>
-            <ThemedText type="smallBold">Clear all</ThemedText>
-          </Pressable>
+            style={styles.rowButton}
+          />
         </ThemedView>
 
         {status && (
-          <ThemedText type="small" themeColor="textSecondary" style={styles.status}>
+          <ThemedText
+            type="small"
+            themeColor="textSecondary"
+            style={styles.status}
+          >
             {status}
           </ThemedText>
         )}
@@ -157,66 +236,3 @@ export default function SettingsScreen() {
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  contentContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    paddingHorizontal: Spacing.four,
-  },
-  container: {
-    width: '100%',
-    maxWidth: MaxContentWidth,
-    gap: Spacing.four,
-  },
-  title: {
-    textAlign: 'center',
-  },
-  helpText: {
-    textAlign: 'center',
-  },
-  field: {
-    gap: Spacing.one,
-  },
-  fieldHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    fontSize: 14,
-    fontFamily: 'monospace',
-    minHeight: 44,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    gap: Spacing.three,
-    marginTop: Spacing.two,
-  },
-  button: {
-    flex: 1,
-    paddingVertical: Spacing.three,
-    borderRadius: Spacing.two,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  saveButton: {
-    backgroundColor: '#208AEF',
-  },
-  saveButtonLabel: {
-    color: 'white',
-  },
-  clearButton: {
-    borderWidth: 1,
-  },
-  pressed: {
-    opacity: 0.7,
-  },
-  status: {
-    textAlign: 'center',
-  },
-});
