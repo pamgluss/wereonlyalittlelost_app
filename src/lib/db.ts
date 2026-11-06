@@ -195,6 +195,19 @@ export async function getEntryById(id: number): Promise<Entry | null> {
   return row ? rowToEntry(row) : null;
 }
 
+export async function getEntryByTripAndSlug(
+  tripId: number,
+  entrySlug: string,
+): Promise<Entry | null> {
+  const db = await getDb();
+  const row = await db.getFirstAsync<EntryRow>(
+    "SELECT * FROM entries WHERE trip_id = ? AND slug = ?",
+    tripId,
+    entrySlug,
+  );
+  return row ? rowToEntry(row) : null;
+}
+
 export type CreateEntryInput = {
   trip_id: number;
   slug: string;

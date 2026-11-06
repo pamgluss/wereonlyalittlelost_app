@@ -22,9 +22,9 @@ import {
   fetchFileContentsFromRepo,
   fetchTripsFromRepo,
   GithubContentsAPIResp,
+  parseMarkdownHeading,
 } from "@/lib/github";
 import { styles } from "@/styles/settings";
-import YAML from "yaml";
 
 type Values = Record<CredentialKey, string>;
 
@@ -96,14 +96,10 @@ export default function SettingsScreen() {
         }),
       );
     });
-    // name and github url
-    // so make a list of promises for fetch
+
     const results = await Promise.all(getIndexHTMLPromises);
     titles = results.map((result) => {
-      const content = atob(result.content);
-      const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
-      if (frontmatterMatch === null) return "";
-      const frontmatter = YAML.parse(frontmatterMatch[1]);
+      const frontmatter = parseMarkdownHeading(result.content);
       return frontmatter.title;
     });
 

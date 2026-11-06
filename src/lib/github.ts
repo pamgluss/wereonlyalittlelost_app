@@ -2,6 +2,8 @@
  * Library for interacting with Github & the blog repo
  */
 
+import YAML from "yaml";
+
 import { GITHUB_BASE_URL } from "@/constants/app";
 import { BLOG_OWNER, BLOG_REPO, TRIPS_LIST_PATH } from "@/constants/blog";
 
@@ -108,6 +110,13 @@ export async function fetchFileContentsFromRepo(opts: {
   await expectOk(response, `fetch contents ${path}`);
 
   return (await response.json()) as GithubContentsAPIResp;
+}
+
+export function parseMarkdownHeading(contents: string): any {
+  const content = atob(contents);
+  const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+  if (frontmatterMatch === null) return "";
+  return YAML.parse(frontmatterMatch[1]);
 }
 
 export async function createCommitWithFiles(opts: {
