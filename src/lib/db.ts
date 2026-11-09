@@ -7,6 +7,7 @@ export type Trip = {
   slug: string;
   display_name: string;
   created_at: number;
+  last_sync_date: number | null;
 };
 
 export type Entry = {
@@ -70,7 +71,7 @@ async function openAndMigrate(): Promise<SQLite.SQLiteDatabase> {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         slug TEXT NOT NULL UNIQUE,
         display_name TEXT NOT NULL,
-        created_at INTEGER NOT NULL
+        created_at INTEGER NOT NULL,
       );
       CREATE TABLE IF NOT EXISTS entries (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -106,6 +107,13 @@ async function openAndMigrate(): Promise<SQLite.SQLiteDatabase> {
         created_at INTEGER NOT NULL
       );
       PRAGMA user_version = 1;
+    `);
+  }
+
+  if (currentVersion < 2) {
+    await db.execAsync(`
+      ALTER TABLE trips ADD COLUMN last_sync_date INTEGER;
+      PRAGMA user_version = 2;
     `);
   }
 
@@ -150,6 +158,17 @@ export async function getTripBySlug(slug: string): Promise<Trip | null> {
   );
 }
 
+export async function markTripSynced(id: number): Promise<void> {
+  const db = await getDb();
+  const now = Date.now();
+
+  await db.runAsync(
+    `UPDATE trips SET last_sync_date = ? WHERE id = ?`,
+    now,
+    id,
+  );
+}
+
 export async function createTrip(input: {
   slug: string;
   display_name: string;
@@ -167,6 +186,7 @@ export async function createTrip(input: {
     slug: input.slug,
     display_name: input.display_name,
     created_at: now,
+    last_sync_date: null,
   };
 }
 

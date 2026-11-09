@@ -24,7 +24,7 @@ import {
   GithubContentsAPIResp,
   parseMarkdownHeading,
 } from "@/lib/github";
-import { styles } from "@/styles/settings";
+import { settingsStyles } from "@/styles/settings";
 
 type Values = Record<CredentialKey, string>;
 
@@ -134,7 +134,7 @@ export default function SettingsScreen() {
     <ScrollView
       style={{ backgroundColor: theme.background }}
       contentContainerStyle={[
-        styles.contentContainer,
+        settingsStyles.contentContainer,
         {
           paddingTop: insets.top + Spacing.four,
           paddingBottom: contentPaddingBottom,
@@ -142,33 +142,33 @@ export default function SettingsScreen() {
       ]}
       keyboardShouldPersistTaps="handled"
     >
-      <ThemedView style={styles.container}>
-        <ThemedText type="subtitle" style={styles.title}>
+      <ThemedView style={settingsStyles.container}>
+        <ThemedText type="subtitle" style={settingsStyles.title}>
           Admin
         </ThemedText>
-        <ThemedView style={styles.buttonRow}>
+        <ThemedView style={settingsStyles.buttonRow}>
           <Button
             label={syncing ? "Sync In Progress.." : "Sync Trips"}
             onPress={handleSyncTrips}
             disabled={loading}
-            style={styles.rowButton}
+            style={settingsStyles.rowButton}
           />
         </ThemedView>
-        <ThemedText type="subtitle" style={styles.title}>
+        <ThemedText type="subtitle" style={settingsStyles.title}>
           Credentials
         </ThemedText>
         <ThemedText
           type="small"
           themeColor="textSecondary"
-          style={styles.helpText}
+          style={settingsStyles.helpText}
         >
           Stored locally in secure storage (Android Keystore). Nothing is
           bundled with the app.
         </ThemedText>
 
         {CREDENTIAL_KEYS.map((key) => (
-          <ThemedView key={key} style={styles.field}>
-            <ThemedView style={styles.fieldHeader}>
+          <ThemedView key={key} style={settingsStyles.field}>
+            <ThemedView style={settingsStyles.fieldHeader}>
               <ThemedText type="smallBold">{CREDENTIAL_LABELS[key]}</ThemedText>
               {values[key].length > 0 && (
                 <Pressable
@@ -192,7 +192,7 @@ export default function SettingsScreen() {
               placeholder={loading ? "Loading…" : "paste value"}
               placeholderTextColor={theme.textSecondary}
               style={[
-                styles.input,
+                settingsStyles.input,
                 {
                   borderColor: theme.backgroundElement,
                   color: theme.text,
@@ -203,19 +203,19 @@ export default function SettingsScreen() {
           </ThemedView>
         ))}
 
-        <ThemedView style={styles.buttonRow}>
+        <ThemedView style={settingsStyles.buttonRow}>
           <Button
             label="Save"
             onPress={handleSave}
             disabled={loading}
-            style={styles.rowButton}
+            style={settingsStyles.rowButton}
           />
           <Button
             label="Clear all"
             variant="secondary"
             onPress={handleClearAll}
             disabled={loading}
-            style={styles.rowButton}
+            style={settingsStyles.rowButton}
           />
         </ThemedView>
 
@@ -223,7 +223,7 @@ export default function SettingsScreen() {
           <ThemedText
             type="small"
             themeColor="textSecondary"
-            style={styles.status}
+            style={settingsStyles.status}
           >
             {status}
           </ThemedText>
