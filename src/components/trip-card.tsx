@@ -33,7 +33,7 @@ export function TripCard({ trip }: TripProps) {
       <ThemedView type="backgroundElement" style={styles.buttonRow}>
         <Button
           label="View Trip Entries"
-          style={styles.buttonRow}
+          style={styles.rowButton}
           onPress={() =>
             router.push({
               pathname: "/trip/[tripId]",
