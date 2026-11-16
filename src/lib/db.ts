@@ -24,7 +24,10 @@ export type Entry = {
   created_at: number;
   updated_at: number;
   published_at: number | null;
+  writer_source: WriterSource;
 };
+
+type WriterSource = "app" | "blog";
 
 export type Photo = {
   id: number;
@@ -114,6 +117,13 @@ async function openAndMigrate(): Promise<SQLite.SQLiteDatabase> {
     await db.execAsync(`
       ALTER TABLE trips ADD COLUMN last_sync_date INTEGER;
       PRAGMA user_version = 2;
+    `);
+  }
+
+  if (currentVersion < 3) {
+    await db.execAsync(`      
+      ALTER TABLE entries ADD COLUMN writer_source TEXT;
+      PRAGMA user_version = 3;
     `);
   }
 
@@ -238,6 +248,7 @@ export type CreateEntryInput = {
   rating?: string | null;
   draft?: boolean;
   body_markdown?: string;
+  writer_source: WriterSource;
 };
 
 export async function createEntry(input: CreateEntryInput): Promise<Entry> {
@@ -245,8 +256,8 @@ export async function createEntry(input: CreateEntryInput): Promise<Entry> {
   const now = Date.now();
   const result = await db.runAsync(
     `INSERT INTO entries
-       (trip_id, slug, title, date, tags, difficulty, rating, draft, body_markdown, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (trip_id, slug, title, date, tags, difficulty, rating, draft, body_markdown, created_at, updated_at, writer_source)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     input.trip_id,
     input.slug,
     input.title,
@@ -258,6 +269,7 @@ export async function createEntry(input: CreateEntryInput): Promise<Entry> {
     input.body_markdown ?? "",
     now,
     now,
+    input.writer_source,
   );
   const entry = await getEntryById(result.lastInsertRowId);
   if (!entry) throw new Error("createEntry: entry disappeared after insert");

@@ -123,6 +123,7 @@ export default function TripScreen() {
         rating: frontmatter.rating,
         draft: frontmatter.draft ?? false,
         body_markdown: file.content,
+        writer_source: "blog",
       };
 
       if (dbId) {
@@ -141,6 +142,7 @@ export default function TripScreen() {
     getAndSetEntries();
   }
 
+  // todo
   function handleOpenNewEntry() {
     return null;
   }
@@ -191,13 +193,6 @@ export default function TripScreen() {
                     },
                   })
                 }
-                style={styles.rowButton}
-              />
-              <Button
-                label="Migrate Images To R2 (TODO)"
-                onPress={function (): void {
-                  throw new Error("Function not implemented.");
-                }}
                 style={styles.rowButton}
               />
             </ThemedView>

@@ -15,6 +15,7 @@ export type GithubContentsAPIResp = {
   url: string;
   html_url: string;
   git_url: string;
+  download_url: string;
   type: string;
   encoding: string;
   content: string;
@@ -95,7 +96,9 @@ export async function fetchDirectoryContentsFromRepo(opts: {
 
   return (await response.json()) as GithubContentsAPIResp[];
 }
-
+// Contents is the API name
+// /content/* is where blog contents live
+// /static/* is where the uploaded images live
 export async function fetchFileContentsFromRepo(opts: {
   pat: string;
   path: string | null;
