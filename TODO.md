@@ -1,0 +1,7 @@
+- [] Try/catch error handling in trip sync
+- [] Try/catch error handling in entry image migration
+- [] Refactor long methods out of FE pages
+- [] Be able to migrate many entries images at once
+- [] Disable migrate entry button if all images are already migrated
+- [] Create new trip modal checks if trip exists
+- [] Create new trip modal also creates trip with \_index.html in Github
