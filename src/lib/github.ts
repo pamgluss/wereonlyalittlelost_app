@@ -96,6 +96,7 @@ export async function fetchDirectoryContentsFromRepo(opts: {
 
   return (await response.json()) as GithubContentsAPIResp[];
 }
+
 // Contents is the API name
 // /content/* is where blog contents live
 // /static/* is where the uploaded images live
@@ -130,6 +131,7 @@ export async function createCommitWithFiles(opts: {
   newBranch: string;
   commitMessage: string;
   files: GitHubFile[];
+  deletePaths?: string[];
   onStep?: StepCallback;
 }): Promise<CreateCommitResult> {
   const {
@@ -140,6 +142,7 @@ export async function createCommitWithFiles(opts: {
     newBranch,
     commitMessage,
     files,
+    deletePaths = [],
     onStep,
   } = opts;
   const step = (msg: string) => onStep?.(msg);
@@ -173,10 +176,20 @@ export async function createCommitWithFiles(opts: {
     }),
   );
 
+  const deleteEntries = deletePaths.map((path) => ({
+    path,
+    mode: "100644",
+    type: "blob",
+    sha: null, // how gh knows to delete this
+  }));
+
   step("Creating tree");
   const treeRes = await githubFetch(pat, `${api}/git/trees`, {
     method: "POST",
-    body: JSON.stringify({ base_tree: baseTreeSha, tree: blobEntries }),
+    body: JSON.stringify({
+      base_tree: baseTreeSha,
+      tree: [...blobEntries, ...deleteEntries],
+    }),
   });
   await expectOk(treeRes, "Create tree");
   const newTreeSha = (await treeRes.json()).sha as string;

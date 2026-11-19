@@ -14,11 +14,19 @@ export type R2UploadResult = {
   publicUrl: string;
 };
 
-function base64ToBytes(b64: string): Uint8Array {
-  const bin = atob(b64);
-  const bytes = new Uint8Array(bin.length);
-  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-  return bytes;
+const IMAGE_TYPES: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  gif: "image/gif",
+  webp: "image/webp",
+  heic: "image/heic",
+  svg: "image/svg+xml",
+};
+
+export function contentTypeFor(filename: string): string {
+  const ext = filename.split(".").pop()?.toLowerCase() ?? "";
+  return IMAGE_TYPES[ext] ?? "application/octet-stream";
 }
 
 function formatAmzDate(d: Date): { amzDate: string; dateStamp: string } {
@@ -105,7 +113,7 @@ export async function uploadToR2(opts: {
   accountId: string;
   bucket: string;
   key: string;
-  contentBase64: string;
+  body: Uint8Array;
   contentType: string;
   publicUrlBase: string;
   onStep?: (msg: string) => void;
@@ -116,15 +124,12 @@ export async function uploadToR2(opts: {
     accountId,
     bucket,
     key,
-    contentBase64,
+    body,
     contentType,
     publicUrlBase,
     onStep,
   } = opts;
   const step = (msg: string) => onStep?.(msg);
-
-  step("Decoding payload");
-  const body = base64ToBytes(contentBase64);
 
   const url = `https://${accountId}.r2.cloudflarestorage.com/${bucket}/${encodeURI(key)}`;
 

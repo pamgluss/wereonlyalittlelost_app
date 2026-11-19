@@ -11,11 +11,15 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { BLOG_BASE_BRANCH, BLOG_OWNER, BLOG_REPO } from "@/constants/blog";
-import { BottomTabInset, MaxContentWidth, Spacing } from "@/constants/theme";
+import { BottomTabInset, Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
+import { styles as sharedStyles } from "@/styles/styles";
 import { getCredential } from "@/lib/credentials";
 import { createCommitWithFiles } from "@/lib/github";
-import { PLACEHOLDER_PNG_BASE64 } from "@/lib/placeholder-image";
+import {
+  PLACEHOLDER_PNG_BASE64,
+  PLACEHOLDER_PNG_BYTES,
+} from "@/lib/placeholder-image";
 import { Place, searchPlaces } from "@/lib/places";
 import {
   R2_ACCOUNT_ID,
@@ -121,7 +125,7 @@ export default function ScratchScreen() {
         accountId: R2_ACCOUNT_ID,
         bucket: R2_BUCKET,
         key,
-        contentBase64: PLACEHOLDER_PNG_BASE64,
+        body: PLACEHOLDER_PNG_BYTES,
         contentType: "image/png",
         publicUrlBase: R2_PUBLIC_URL_BASE,
         onStep: (msg) => setR2Log((prev) => [...prev, msg]),
@@ -383,23 +387,9 @@ export default function ScratchScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  contentContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    paddingHorizontal: Spacing.four,
-  },
-  container: {
-    width: "100%",
-    maxWidth: MaxContentWidth,
-    gap: Spacing.four,
-  },
-  title: {
-    textAlign: "center",
-  },
-  helpText: {
-    textAlign: "center",
-  },
+// Shared styles come from @/styles/styles; only explore-specific ones (or ones that
+// differ from the shared version, like `button` and `input`) are defined here.
+const localStyles = StyleSheet.create({
   section: {
     gap: Spacing.two,
     paddingVertical: Spacing.three,
@@ -419,12 +409,6 @@ const styles = StyleSheet.create({
   buttonLabel: {
     color: "white",
   },
-  pressed: {
-    opacity: 0.7,
-  },
-  disabled: {
-    opacity: 0.5,
-  },
   logBox: {
     padding: Spacing.three,
     borderRadius: Spacing.two,
@@ -433,18 +417,11 @@ const styles = StyleSheet.create({
   logEntry: {
     fontSize: 12,
   },
-  resultLink: {
-    textAlign: "center",
-    paddingVertical: Spacing.two,
-  },
   errorBox: {
     padding: Spacing.three,
     borderRadius: Spacing.two,
     borderWidth: 1,
     borderColor: "#D00",
-  },
-  errorText: {
-    color: "#D00",
   },
   input: {
     borderWidth: 1,
@@ -465,3 +442,5 @@ const styles = StyleSheet.create({
     gap: Spacing.one,
   },
 });
+
+const styles = { ...sharedStyles, ...localStyles };

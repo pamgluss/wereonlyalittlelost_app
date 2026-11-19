@@ -113,6 +113,7 @@ The payoff phase.
 - Git Data API commit targeting `content/trips/{trip_slug}/{entry_slug}.md` on `master`
 - Existing GitHub Action deploys the site
 - Mark entry `published_at = now()` locally, lock editing
+- Verify Tumblr and Discord posts still work as intended.
 
 **Done when:** draft a post on the phone, hit Publish, see it live on
 wereonlyalittlelost within a few minutes.

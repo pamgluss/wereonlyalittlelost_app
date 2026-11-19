@@ -109,6 +109,10 @@ export const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
   },
+  resultLink: {
+    textAlign: "center",
+    paddingVertical: Spacing.two,
+  },
 });
 
 export const viewStyles = StyleSheet.create({
