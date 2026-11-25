@@ -10,7 +10,13 @@ import {
 import { BottomTabInset, Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 import { getCredential } from "@/lib/credentials";
-import { Entry, getEntryByTripAndSlug, getTripById, Trip } from "@/lib/db";
+import {
+  Entry,
+  getEntryByTripAndSlug,
+  getTripById,
+  Trip,
+  updateEntry,
+} from "@/lib/db";
 import {
   createCommitWithFiles,
   fetchFileContentsFromRepo,
@@ -18,6 +24,7 @@ import {
 } from "@/lib/github";
 import {
   contentTypeFor,
+  formatR2KeyFromPath,
   R2_ACCOUNT_ID,
   R2_BUCKET,
   R2_PUBLIC_URL_BASE,
@@ -77,10 +84,15 @@ export default function EntryMarkdownScreen() {
     setEntry(entry);
 
     const contents = entry.body_markdown;
-    const markdown = atob(contents);
+    let markdown = "";
+    try {
+      markdown = atob(contents);
+    } catch (err) {
+      setErrorMessage(String(err));
+      return;
+    }
 
     setMarkdown(markdown);
-
     // Regex match on ![20201006_081334](/images/20201006_081334.jpg) in markdown
     // an image in R2 will not have a local path URL in /images/
     setImageMigrationState("scanning");
@@ -93,6 +105,7 @@ export default function EntryMarkdownScreen() {
   }
 
   async function migrateImages() {
+    if (!entry || !trip) return;
     setErrorMessage("");
 
     const pat = await getCredential("github_pat");
@@ -138,7 +151,7 @@ export default function EntryMarkdownScreen() {
     // Then transform that content into the format R2 expects
     const uploadPromises = await Promise.all(fetchResults).then((results) => {
       return results.map((result, index) => {
-        const key = imagePaths[index];
+        const key = formatR2KeyFromPath(imagePaths[index], trip.slug);
         const buffer = new Uint8Array(result);
         return uploadToR2({
           accessKeyId,
@@ -171,8 +184,6 @@ export default function EntryMarkdownScreen() {
     imagePaths.forEach((path, index) => {
       editedMarkdown = editedMarkdown.replace(`/${path}`, r2PublicUrls[index]);
     });
-
-    setMarkdown(editedMarkdown);
 
     // Commit and push branch for page
     // Delete the images too
@@ -213,6 +224,12 @@ export default function EntryMarkdownScreen() {
 
     // If nothing went wrong:
     setImageMigrationState("done");
+
+    await updateEntry(entry.id, {
+      // body_markdown is stored base64-encoded (as GitHub returns it)
+      body_markdown: btoa(editedMarkdown),
+    });
+    setMarkdown(editedMarkdown);
 
     // Wait a while then clear the state
     setTimeout(() => setImageMigrationState("idle"), 2000);
@@ -273,6 +290,14 @@ export default function EntryMarkdownScreen() {
               migrateImages();
             }}
             disabled={imagePaths.length === 0}
+            style={styles.rowButton}
+          />
+          <Button
+            label="Edit Markdown TODO"
+            onPress={() => {
+              console.log("TODO");
+            }}
+            disabled={imageMigrationState != "idle"}
             style={styles.rowButton}
           />
           {branchUrl ? (

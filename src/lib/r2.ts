@@ -107,6 +107,18 @@ async function sign(opts: {
   };
 }
 
+export function formatR2KeyFromPath(path: string, tripSlug: string): string {
+  if (path.includes(tripSlug)) {
+    // Good: /images/california/DSC_3305.png
+    return path;
+  } else {
+    // Bad: /images/DSC_0013.png
+    const splitPath = path.split("/");
+    const filename = splitPath[splitPath.length - 1];
+    return `images/${tripSlug}/${filename}`;
+  }
+}
+
 export async function uploadToR2(opts: {
   accessKeyId: string;
   secretAccessKey: string;
