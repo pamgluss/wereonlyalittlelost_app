@@ -5,3 +5,7 @@
 - [] Disable migrate entry button if all images are already migrated
 - [] Create new trip modal checks if trip exists
 - [] Create new trip modal also creates trip with \_index.html in Github
+- [] Save images to the image DB
+- [] New post flow should return you to the entries list after saving
+- [] You should be able to preview images after you've uploaded them
+- [] Slug should be calculated off the title of the post, but you should also be able to edit it

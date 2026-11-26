@@ -10,6 +10,12 @@ export type Trip = {
   last_sync_date: number | null;
 };
 
+export const DIFFICULTIES = [null, "easy", "moderate", "challenging"] as const;
+type DifficultyOpts = (typeof DIFFICULTIES)[number];
+
+export const RATINGS = [null, "Recommended", "Not Recommended"] as const;
+type RatingOpts = (typeof RATINGS)[number];
+
 export type Entry = {
   id: number;
   trip_id: number;
@@ -17,8 +23,8 @@ export type Entry = {
   title: string;
   date: string;
   tags: string[];
-  difficulty: string | null;
-  rating: string | null;
+  difficulty: DifficultyOpts;
+  rating: RatingOpts;
   draft: boolean;
   body_markdown: string;
   created_at: number;

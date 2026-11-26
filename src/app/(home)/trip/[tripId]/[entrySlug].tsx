@@ -22,6 +22,7 @@ import {
   fetchFileContentsFromRepo,
   GitHubFile,
 } from "@/lib/github";
+import { getLocalImagePathsFromMarkdown } from "@/lib/markdown-helpers";
 import {
   contentTypeFor,
   formatR2KeyFromPath,
@@ -96,8 +97,7 @@ export default function EntryMarkdownScreen() {
     // Regex match on ![20201006_081334](/images/20201006_081334.jpg) in markdown
     // an image in R2 will not have a local path URL in /images/
     setImageMigrationState("scanning");
-    const regex = /images\/.+\.[a-z]+/g;
-    const matches = markdown.match(regex);
+    const matches = getLocalImagePathsFromMarkdown(markdown);
     setImagePaths(matches || []);
 
     const tripDetails = await getTripById(id);

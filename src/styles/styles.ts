@@ -7,6 +7,12 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: Spacing.four,
   },
+  rowContainer: {
+    flexDirection: "row", // Aligns children horizontally
+    justifyContent: "space-between", // Distributes space horizontally (main axis)
+    alignItems: "center", // Aligns children vertically (cross axis)
+    gap: 10, // Adds uniform spacing between items
+  },
   container: {
     width: "100%",
     maxWidth: MaxContentWidth,
@@ -93,6 +99,12 @@ export const styles = StyleSheet.create({
     textAlign: "center",
     paddingVertical: Spacing.four,
   },
+  label: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 6,
+    color: "#333",
+  },
   list: {
     gap: Spacing.two,
   },
@@ -102,12 +114,18 @@ export const styles = StyleSheet.create({
     gap: Spacing.one,
   },
   textArea: {
-    height: 120,
+    minHeight: 120,
     borderColor: "#ccc",
     borderWidth: 1,
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
+  },
+  textInput: {
+    padding: 10,
+    borderColor: "#000",
+    borderWidth: 1,
+    margin: 12,
   },
   resultLink: {
     textAlign: "center",
