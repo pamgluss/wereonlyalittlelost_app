@@ -19,7 +19,6 @@ export function TripCard({ trip }: TripProps) {
       type="backgroundElement"
       style={tripCardStyles.tripCard}
     >
-      <ThemedText type="smallBold">{trip.display_name}</ThemedText>
       <ThemedText type="small" themeColor="textSecondary">
         <ThemedText type="code">{trip.slug}</ThemedText> · created{" "}
         {new Date(trip.created_at).toLocaleDateString()}

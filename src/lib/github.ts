@@ -2,7 +2,7 @@
  * Library for interacting with Github & the blog repo
  */
 
-import YAML from "yaml";
+import YAML, { Document, stringify, YAMLSeq } from "yaml";
 
 import { GITHUB_BASE_URL } from "@/constants/app";
 import { BLOG_OWNER, BLOG_REPO, TRIPS_LIST_PATH } from "@/constants/blog";
@@ -121,6 +121,26 @@ export function parseMarkdownHeading(contents: string): any {
   const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
   if (frontmatterMatch === null) return "";
   return YAML.parse(frontmatterMatch[1]);
+}
+
+export type HeaderKeysT = {
+  title: string;
+  date: string;
+  draft: string;
+  tags: string[];
+  difficulty?: string;
+  rating?: string;
+};
+export function generateMarkdownHeading(metadata: HeaderKeysT): string {
+  // Here, forcing `tags: [ foo, bar ]` rather than the YAML array format with dashes
+  const sequence = new Document(metadata.tags).contents as YAMLSeq;
+  sequence.flow = true;
+  const input = {
+    ...metadata,
+    tags: sequence,
+  };
+  const yamlContent = stringify(input).trim();
+  return `---\n${yamlContent}\n---`;
 }
 
 export async function createCommitWithFiles(opts: {

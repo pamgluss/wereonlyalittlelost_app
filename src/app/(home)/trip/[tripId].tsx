@@ -142,11 +142,6 @@ export default function TripScreen() {
     getAndSetEntries();
   }
 
-  // todo
-  function handleOpenNewEntry() {
-    return null;
-  }
-
   const render = () => {
     if (loading) {
       return (
@@ -219,8 +214,13 @@ export default function TripScreen() {
         </ThemedText>
         <ThemedView type="backgroundElement" style={styles.buttonRow}>
           <Button
-            label="Add Entry (TODO)"
-            onPress={() => handleOpenNewEntry()}
+            label="New Entry"
+            onPress={() =>
+              router.push({
+                pathname: "/trip/[tripId]/newEntry",
+                params: { tripId: String(trip?.id) },
+              })
+            }
             style={styles.rowButton}
             disabled={loading}
           />

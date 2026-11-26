@@ -93,6 +93,12 @@ export const styles = StyleSheet.create({
     textAlign: "center",
     paddingVertical: Spacing.four,
   },
+  label: {
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 6,
+    color: "#333",
+  },
   list: {
     gap: Spacing.two,
   },
@@ -102,12 +108,18 @@ export const styles = StyleSheet.create({
     gap: Spacing.one,
   },
   textArea: {
-    height: 120,
+    minHeight: 120,
     borderColor: "#ccc",
     borderWidth: 1,
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
+  },
+  textInput: {
+    padding: 10,
+    borderColor: "#000",
+    borderWidth: 1,
+    margin: 12,
   },
   resultLink: {
     textAlign: "center",
