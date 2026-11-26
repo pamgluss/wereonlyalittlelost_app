@@ -2,15 +2,29 @@ import { Button } from "@/components/button";
 import { TagInput } from "@/components/tag-input";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
+import {
+  BLOG_BASE_BRANCH,
+  BLOG_OWNER,
+  BLOG_REPO,
+  TRIPS_LIST_PATH,
+} from "@/constants/blog";
 import { BottomTabInset, Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 import { getCredential } from "@/lib/credentials";
 import { createEntry, CreateEntryInput, getTripById, Trip } from "@/lib/db";
-import { generateMarkdownHeading, HeaderKeysT } from "@/lib/github";
+import {
+  createCommitWithFiles,
+  generateMarkdownHeading,
+  GitHubFile,
+  HeaderKeysT,
+} from "@/lib/github";
+import {
+  getLocalImagePathsFromMarkdown,
+  titleToSlug,
+} from "@/lib/markdown-helpers";
 import {
   contentTypeFor,
   formatR2KeyFromPath,
-  getLocalImagePathsFromMarkdown,
   R2_ACCOUNT_ID,
   R2_BUCKET,
   R2_PUBLIC_URL_BASE,
@@ -22,7 +36,15 @@ import { File } from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useReducer, useState } from "react";
-import { Alert, ScrollView, Switch, Text, TextInput } from "react-native";
+import {
+  Alert,
+  Linking,
+  Pressable,
+  ScrollView,
+  Switch,
+  Text,
+  TextInput,
+} from "react-native";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -31,6 +53,7 @@ import {
 // Reducer function
 type UserFormActions =
   | "edit_title"
+  | "edit_slug"
   | "pick_date"
   | "edit_tags"
   | "edit_difficulty"
@@ -95,6 +118,7 @@ function reducer(
   return state;
 }
 
+// TODO: Refactor all the useState stuff into the reducer
 function initEntry(trip_id: number): CreateEntryInput {
   const date = new Date().toISOString();
   return {
@@ -125,6 +149,8 @@ export default function NewEntryScreen() {
   const [state, dispatch] = useReducer(reducer, initEntry(id));
   const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [imageMap, setImageMap] = useState<Partial<ImageMapT>>({});
+  const [branchUrl, setBranchUrl] = useState<string>("");
+  const [creatingPost, setCreatingPost] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -191,6 +217,20 @@ export default function NewEntryScreen() {
       Alert.alert("Trip is null", "Cannot submit without an associated trip.");
       return;
     }
+
+    // Error on missing r2 and GH creds
+    const pat = await getCredential("github_pat");
+    if (!pat) {
+      Alert.alert("Empty PAT", "Configure PAT token in settings.");
+      return;
+    }
+
+    setCreatingPost(true);
+
+    // Generate a slug from the title
+    const entrySlug = titleToSlug(state.title);
+    dispatch({ type: "edit_slug", value: entrySlug });
+
     // First construct the markdown header
     let headerKeys: HeaderKeysT = {
       title: state.title,
@@ -220,11 +260,11 @@ export default function NewEntryScreen() {
 
     // Second, append the input markdown
     const newMarkdown = headerMarkdown + "\n" + state.body_markdown;
-    console.log(newMarkdown);
 
     // Third, search our map for the images to make sure we have the URI - if we don't, error
     // It's possible there are no matches, in which case we can skip this step
     const matches = getLocalImagePathsFromMarkdown(newMarkdown);
+    let editedMarkdown = newMarkdown;
     if (matches) {
       const accessKeyId = await getCredential("r2_access_key_id");
       const secretAccessKey = await getCredential("r2_secret_access_key");
@@ -233,6 +273,7 @@ export default function NewEntryScreen() {
           "Missing R2 Creds",
           "You need to set up R2 key and/or secret access key.",
         );
+        setCreatingPost(false);
         return;
       }
 
@@ -263,32 +304,72 @@ export default function NewEntryScreen() {
         },
       );
 
-      let editedMarkdown = newMarkdown;
       matches.forEach((path, index) => {
         editedMarkdown = editedMarkdown.replace(
           `/${path}`,
           r2PublicUrls[index],
         );
       });
+    }
 
-      console.log(editedMarkdown);
+    // Fifth, encode and save the markdown to the DB
+    let encodedMarkdown = "";
+    try {
+      encodedMarkdown = btoa(editedMarkdown);
+    } catch (err) {
+      Alert.alert("Error encoding markdown", JSON.stringify(err));
+      setCreatingPost(false);
+      return;
+    }
 
-      const createRes = await createEntry({
+    try {
+      await createEntry({
         trip_id: trip.id,
-        slug: "",
+        slug: entrySlug,
         title: headerKeys.title,
         date: headerKeys.date,
         tags: headerKeys.tags,
         difficulty: state.difficulty,
         rating: state.rating,
         draft: state.draft,
-        body_markdown: editedMarkdown,
+        body_markdown: encodedMarkdown,
         writer_source: "app",
       });
+    } catch (err) {
+      Alert.alert("Error saving post to DB", JSON.stringify(err));
+      setCreatingPost(false);
+      return;
     }
 
-    // Fifth, encode and save the markdown to the DB
     // Finally, make the commit on github
+    try {
+      const timestamp = Date.now();
+      const newBranch = `app-${trip.slug}-${entrySlug}-${timestamp}`;
+      const files: GitHubFile[] = [
+        {
+          path: `${TRIPS_LIST_PATH}/${trip.slug}/${entrySlug}.md`,
+          content: editedMarkdown,
+          encoding: "utf-8",
+        },
+      ];
+      const commitResult = await createCommitWithFiles({
+        pat,
+        owner: BLOG_OWNER,
+        repo: BLOG_REPO,
+        baseBranch: BLOG_BASE_BRANCH,
+        newBranch,
+        commitMessage: `exclude - New post for ${state.title} from the app`,
+        files,
+      });
+
+      setBranchUrl(commitResult.branchUrl);
+    } catch (err) {
+      Alert.alert("Error making branch", JSON.stringify(err));
+      setCreatingPost(false);
+      return;
+    }
+
+    setCreatingPost(false);
   };
 
   const render = () => {
@@ -399,7 +480,7 @@ export default function NewEntryScreen() {
         </ThemedView>
         <ThemedView type="backgroundElement" style={styles.buttonRow}>
           <Button
-            label="Save + Push Branch (TODO)"
+            label={creatingPost ? "Creating Post..." : "Save + Push Post"}
             style={styles.rowButton}
             onPress={() => {
               submitPost();
@@ -421,7 +502,16 @@ export default function NewEntryScreen() {
         },
       ]}
     >
-      <ThemedView style={styles.container}>{render()}</ThemedView>
+      <ThemedView style={styles.container}>
+        {render()}
+        {branchUrl ? (
+          <Pressable onPress={() => Linking.openURL(branchUrl)}>
+            <ThemedText type="link" style={styles.resultLink}>
+              View Branch →
+            </ThemedText>
+          </Pressable>
+        ) : null}
+      </ThemedView>
     </ScrollView>
   );
 }

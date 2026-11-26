@@ -29,13 +29,6 @@ export function contentTypeFor(filename: string): string {
   return IMAGE_TYPES[ext] ?? "application/octet-stream";
 }
 
-export function getLocalImagePathsFromMarkdown(
-  markdown: string,
-): RegExpMatchArray | null {
-  const regex = /images\/.+\.[a-z]+/g;
-  return markdown.match(regex);
-}
-
 function formatAmzDate(d: Date): { amzDate: string; dateStamp: string } {
   const amzDate = d
     .toISOString()
