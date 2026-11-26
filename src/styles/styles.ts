@@ -7,6 +7,12 @@ export const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: Spacing.four,
   },
+  rowContainer: {
+    flexDirection: "row", // Aligns children horizontally
+    justifyContent: "space-between", // Distributes space horizontally (main axis)
+    alignItems: "center", // Aligns children vertically (cross axis)
+    gap: 10, // Adds uniform spacing between items
+  },
   container: {
     width: "100%",
     maxWidth: MaxContentWidth,

@@ -11,7 +11,14 @@ import {
 import { BottomTabInset, Spacing } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 import { getCredential } from "@/lib/credentials";
-import { createEntry, CreateEntryInput, getTripById, Trip } from "@/lib/db";
+import {
+  createEntry,
+  CreateEntryInput,
+  DIFFICULTIES,
+  getTripById,
+  RATINGS,
+  Trip,
+} from "@/lib/db";
 import {
   createCommitWithFiles,
   generateMarkdownHeading,
@@ -31,6 +38,7 @@ import {
   uploadToR2,
 } from "@/lib/r2";
 import { styles } from "@/styles/styles";
+import { Picker } from "@expo/ui/community/picker";
 import { DatePickerDialog, Host } from "@expo/ui/jetpack-compose";
 import { File } from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
@@ -44,6 +52,7 @@ import {
   Switch,
   Text,
   TextInput,
+  View,
 } from "react-native";
 import {
   SafeAreaView,
@@ -57,6 +66,7 @@ type UserFormActions =
   | "pick_date"
   | "edit_tags"
   | "edit_difficulty"
+  | "edit_rating"
   | "change_draft_status"
   | "edit_body_markdown"
   | "append_image";
@@ -88,6 +98,24 @@ function reducer(
         date: action.value,
       };
     }
+    case "edit_difficulty": {
+      return {
+        ...state,
+        difficulty: action.value,
+      };
+    }
+    case "edit_rating": {
+      return {
+        ...state,
+        rating: action.value,
+      };
+    }
+    case "edit_slug": {
+      return {
+        ...state,
+        slug: action.value,
+      };
+    }
     case "edit_tags": {
       return {
         ...state,
@@ -114,8 +142,6 @@ function reducer(
       };
     }
   }
-
-  return state;
 }
 
 // TODO: Refactor all the useState stuff into the reducer
@@ -402,11 +428,15 @@ export default function NewEntryScreen() {
           value={state.title}
           placeholder="Entry Title"
         />
-        <Text>Date: {state.date}</Text>
-        <Button
-          label="Select date"
-          onPress={() => setDatePickerVisible(true)}
-        />
+
+        <View style={styles.rowContainer}>
+          <Text>Date: {state.date}</Text>
+          <Button
+            style={styles.rowButton}
+            label="Change"
+            onPress={() => setDatePickerVisible(true)}
+          />
+        </View>
         {datePickerVisible && (
           <Host>
             <DatePickerDialog
@@ -433,19 +463,68 @@ export default function NewEntryScreen() {
           onChange={(tags) => dispatch({ type: "edit_tags", value: tags })}
         />
 
-        <Text nativeID="draftSwitch" style={styles.label}>
-          Entry Is a Draft
-        </Text>
-        <Switch
-          aria-labelledby="draftSwitch"
-          trackColor={{ false: "#767577", true: "#cedbf8" }}
-          thumbColor={state.draft ? "#81b0ff" : "#f4f3f4"}
-          ios_backgroundColor="#3e3e3e"
-          onValueChange={(value) =>
-            dispatch({ type: "change_draft_status", value })
-          }
-          value={state.draft}
-        />
+        <Text nativeID="hikeOptions">Hike Options</Text>
+        <View style={styles.rowContainer} aria-labelledby="hikeOptions">
+          <Text nativeID="difficulty" style={styles.label}>
+            Difficulty
+          </Text>
+          <Picker
+            style={{ flex: 1 }}
+            selectedValue={state.difficulty}
+            onValueChange={(value) =>
+              dispatch({ type: "edit_difficulty", value })
+            }
+          >
+            {DIFFICULTIES.map((difficulty) => {
+              return (
+                <Picker.Item
+                  label={
+                    difficulty
+                      ? difficulty[0].toUpperCase() + difficulty.slice(1)
+                      : "N/A"
+                  }
+                  value={difficulty}
+                />
+              );
+            })}
+          </Picker>
+
+          <Text nativeID="rating" style={styles.label}>
+            Rating
+          </Text>
+          <Picker
+            style={{ flex: 1 }}
+            selectedValue={state.rating}
+            onValueChange={(value) => dispatch({ type: "edit_rating", value })}
+          >
+            {RATINGS.map((rating) => {
+              return (
+                <Picker.Item
+                  label={
+                    rating ? rating[0].toUpperCase() + rating.slice(1) : "N/A"
+                  }
+                  value={rating}
+                />
+              );
+            })}
+          </Picker>
+        </View>
+
+        <View style={styles.rowContainer}>
+          <Text nativeID="draftSwitch" style={styles.label}>
+            Entry Is a Draft
+          </Text>
+          <Switch
+            aria-labelledby="draftSwitch"
+            trackColor={{ false: "#767577", true: "#cedbf8" }}
+            thumbColor={state.draft ? "#81b0ff" : "#f4f3f4"}
+            ios_backgroundColor="#3e3e3e"
+            onValueChange={(value) =>
+              dispatch({ type: "change_draft_status", value })
+            }
+            value={state.draft}
+          />
+        </View>
 
         <Text nativeID="blogBody" style={styles.label}>
           Blog Body
