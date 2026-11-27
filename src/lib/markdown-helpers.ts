@@ -8,28 +8,42 @@ export function titleToSlug(title: string): string {
     .replace(/[^\w-]+/g, "");
 }
 
-export function getLocalImagePathsFromMarkdown(
-  markdown: string,
-): RegExpMatchArray | null {
-  const regex = /images\/.+\.[a-z]+/g;
-  return markdown.match(regex);
+export function getLocalImagePathsFromMarkdown(markdown: string): string[] {
+  // Match on [image](/images/..) to disambiguate between
+  // R2 images and local images
+  const regex = /]\(\/images\/.+\.[a-z]+/g;
+  const matches = markdown.match(regex);
+  if (matches != null) {
+    const defNotNullMatches = matches;
+    // Strip the markdown bit and just return the path though
+    const prefix = "](/";
+    return defNotNullMatches.map((match) => {
+      return match.slice(prefix.length);
+    });
+  } else {
+    return [];
+  }
 }
 
-export function parseMarkdownHeading(contents: string): any {
-  const content = atob(contents);
-  const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
-  if (frontmatterMatch === null) return "";
-  return YAML.parse(frontmatterMatch[1]);
-}
-
+// HeaderKeysT is the type for writing TO markdown, not what we get out of the markdown
 export type HeaderKeysT = {
   title: string;
   date: string;
-  draft: string;
+  draft: string | boolean;
   tags: string[];
   difficulty?: string;
   rating?: string;
 };
+
+export function parseMarkdownHeading(contents: string): HeaderKeysT {
+  const content = atob(contents);
+  const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+  if (frontmatterMatch === null) {
+    throw new Error("frontmatterMatch failed");
+  }
+  return YAML.parse(frontmatterMatch[1]);
+}
+
 export function generateMarkdownHeading(metadata: HeaderKeysT): string {
   // Here, forcing `tags: [ foo, bar ]` rather than the YAML array format with dashes
   const sequence = new Document(metadata.tags).contents as YAMLSeq<Scalar>;

@@ -81,44 +81,51 @@ export default function SettingsScreen() {
 
     setSyncing(true);
 
-    const tripsList = await fetchTripsFromRepo({ pat });
+    try {
+      const tripsList = await fetchTripsFromRepo({ pat });
 
-    const slugs: string[] = [];
-    const getIndexHTMLPromises: Promise<GithubContentsAPIResp>[] = [];
-    let titles: string[] = [];
+      const slugs: string[] = [];
+      const getIndexHTMLPromises: Promise<GithubContentsAPIResp>[] = [];
+      let titles: string[] = [];
 
-    tripsList.forEach((trip) => {
-      slugs.push(trip.name);
-      getIndexHTMLPromises.push(
-        fetchFileContentsFromRepo({
-          pat,
-          path: `${TRIPS_LIST_PATH}/${trip.name}/_index.html`,
-        }),
-      );
-    });
-
-    const results = await Promise.all(getIndexHTMLPromises);
-    titles = results.map((result) => {
-      const frontmatter = parseMarkdownHeading(result.content);
-      return frontmatter.title;
-    });
-
-    // Now sync
-    const createTripPromises: Promise<Trip>[] = [];
-    slugs.forEach(async (slug, index) => {
-      const existingTrip = await getTripBySlug(slug);
-      if (existingTrip === null) {
-        createTripPromises.push(
-          createTrip({
-            slug,
-            display_name: titles[index],
+      tripsList.forEach((trip) => {
+        slugs.push(trip.name);
+        getIndexHTMLPromises.push(
+          fetchFileContentsFromRepo({
+            pat,
+            path: `${TRIPS_LIST_PATH}/${trip.name}/_index.html`,
           }),
         );
-      }
-    });
+      });
 
-    await Promise.all(createTripPromises);
-    setSyncing(false);
+      const results = await Promise.all(getIndexHTMLPromises);
+      titles = results.map((result) => {
+        const frontmatter = parseMarkdownHeading(result.content);
+
+        return frontmatter.title;
+      });
+
+      // Now sync
+      const createTripPromises: Promise<Trip>[] = [];
+      slugs.forEach(async (slug, index) => {
+        const existingTrip = await getTripBySlug(slug);
+        if (existingTrip === null) {
+          createTripPromises.push(
+            createTrip({
+              slug,
+              display_name: titles[index],
+            }),
+          );
+        }
+      });
+
+      await Promise.all(createTripPromises);
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : "Sync failed");
+      setTimeout(() => setStatus(null), 2000);
+    } finally {
+      setSyncing(false);
+    }
   }
 
   async function handleClearAll() {
