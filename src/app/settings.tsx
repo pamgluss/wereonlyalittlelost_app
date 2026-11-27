@@ -22,8 +22,8 @@ import {
   fetchFileContentsFromRepo,
   fetchTripsFromRepo,
   GithubContentsAPIResp,
-  parseMarkdownHeading,
 } from "@/lib/github";
+import { parseMarkdownHeading } from "@/lib/markdown-helpers";
 import { settingsStyles } from "@/styles/settings";
 
 type Values = Record<CredentialKey, string>;

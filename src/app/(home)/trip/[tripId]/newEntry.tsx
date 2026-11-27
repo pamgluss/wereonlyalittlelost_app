@@ -19,14 +19,11 @@ import {
   RATINGS,
   Trip,
 } from "@/lib/db";
+import { createCommitWithFiles, GitHubFile } from "@/lib/github";
 import {
-  createCommitWithFiles,
   generateMarkdownHeading,
-  GitHubFile,
-  HeaderKeysT,
-} from "@/lib/github";
-import {
   getLocalImagePathsFromMarkdown,
+  HeaderKeysT,
   titleToSlug,
 } from "@/lib/markdown-helpers";
 import {

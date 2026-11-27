@@ -20,8 +20,8 @@ import {
   fetchDirectoryContentsFromRepo,
   fetchFileContentsFromRepo,
   GithubContentsAPIResp,
-  parseMarkdownHeading,
 } from "@/lib/github";
+import { parseMarkdownHeading } from "@/lib/markdown-helpers";
 import { styles } from "@/styles/styles";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useState } from "react";
