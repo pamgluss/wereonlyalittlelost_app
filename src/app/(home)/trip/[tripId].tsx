@@ -75,71 +75,77 @@ export default function TripScreen() {
       return;
     }
 
-    // Get all the files in the trip slug directory that are NOT _index.html
-    const directoryContents = await fetchDirectoryContentsFromRepo({
-      pat,
-      path: `${TRIPS_LIST_PATH}/${trip.slug}`,
-    });
+    try {
+      // Get all the files in the trip slug directory that are NOT _index.html
+      const directoryContents = await fetchDirectoryContentsFromRepo({
+        pat,
+        path: `${TRIPS_LIST_PATH}/${trip.slug}`,
+      });
 
-    const githubFetchPromises: Promise<GithubContentsAPIResp>[] = [];
-    const dbFetchPromises: Promise<Entry | null>[] = [];
-    directoryContents.forEach((file) => {
-      // ignore index
-      if (file.name === "_index.html") {
-        return;
+      const githubFetchPromises: Promise<GithubContentsAPIResp>[] = [];
+      const dbFetchPromises: Promise<Entry | null>[] = [];
+      directoryContents.forEach((file) => {
+        // ignore index
+        if (file.name === "_index.html") {
+          return;
+        }
+        githubFetchPromises.push(
+          fetchFileContentsFromRepo({
+            pat,
+            path: `${TRIPS_LIST_PATH}/${trip.slug}/${file.name}`,
+          }),
+        );
+
+        const slug = file.name.replace(new RegExp(".md" + "$"), "");
+
+        dbFetchPromises.push(getEntryByTripAndSlug(trip.id, slug));
+      });
+
+      // Either way we will read the file so we can sync or create
+      const ghFiles = await Promise.all(githubFetchPromises);
+      const dbEntries = await Promise.all(dbFetchPromises);
+
+      const dbWritesPromises = [];
+
+      for (let i = 0; i < ghFiles.length; i++) {
+        const file = ghFiles[i];
+        const dbEntry = dbEntries[i];
+        const dbId = dbEntry?.id;
+
+        const frontmatter = parseMarkdownHeading(file.content);
+
+        const slug = file.name.replace(new RegExp(".md" + "$"), "");
+        const syncedEntry: CreateEntryInput = {
+          trip_id: trip.id,
+          slug: slug,
+          title: frontmatter.title,
+          date: frontmatter.date,
+          tags: frontmatter.tags ?? [],
+          difficulty: frontmatter.difficulty,
+          rating: frontmatter.rating,
+          draft: Boolean(frontmatter.draft),
+          body_markdown: file.content,
+          writer_source: "blog",
+        };
+
+        if (dbId) {
+          dbWritesPromises.push(updateEntry(dbId, syncedEntry));
+        } else {
+          dbWritesPromises.push(createEntry(syncedEntry));
+        }
       }
-      githubFetchPromises.push(
-        fetchFileContentsFromRepo({
-          pat,
-          path: `${TRIPS_LIST_PATH}/${trip.slug}/${file.name}`,
-        }),
-      );
 
-      const slug = file.name.replace(new RegExp(".md" + "$"), "");
+      await Promise.all(dbWritesPromises);
+      await markTripSynced(trip.id);
 
-      dbFetchPromises.push(getEntryByTripAndSlug(trip.id, slug));
-    });
+      setError("");
 
-    // Either way we will read the file so we can sync or create
-    const ghFiles = await Promise.all(githubFetchPromises);
-    const dbEntries = await Promise.all(dbFetchPromises);
-
-    const dbWritesPromises = [];
-
-    for (let i = 0; i < ghFiles.length; i++) {
-      const file = ghFiles[i];
-      const dbEntry = dbEntries[i];
-      const dbId = dbEntry?.id;
-
-      const frontmatter = parseMarkdownHeading(file.content);
-      const slug = file.name.replace(new RegExp(".md" + "$"), "");
-      const syncedEntry: CreateEntryInput = {
-        trip_id: trip.id,
-        slug: slug,
-        title: frontmatter.title,
-        date: frontmatter.date,
-        tags: frontmatter.tags ?? [],
-        difficulty: frontmatter.difficulty,
-        rating: frontmatter.rating,
-        draft: frontmatter.draft ?? false,
-        body_markdown: file.content,
-        writer_source: "blog",
-      };
-
-      if (dbId) {
-        dbWritesPromises.push(updateEntry(dbId, syncedEntry));
-      } else {
-        dbWritesPromises.push(createEntry(syncedEntry));
-      }
+      getAndSetEntries();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Sync failed");
+    } finally {
+      setSyncing(false);
     }
-
-    await Promise.all(dbWritesPromises);
-    await markTripSynced(trip.id);
-
-    setError("");
-    setSyncing(false);
-
-    getAndSetEntries();
   }
 
   const render = () => {

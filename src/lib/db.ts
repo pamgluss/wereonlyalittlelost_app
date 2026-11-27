@@ -252,7 +252,7 @@ export type CreateEntryInput = {
   tags?: string[];
   difficulty?: string | null;
   rating?: string | null;
-  draft?: boolean;
+  draft: boolean;
   body_markdown?: string;
   writer_source: WriterSource;
 };
